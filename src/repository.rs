@@ -12,15 +12,12 @@ use crate::id;
 use futures::future::Future;
 
 ///
-pub trait Repository: Debug {
+pub trait Repository: Debug + Sync + Send {
     type Id: id::Id;
     type Error: Debug;
     type Node: node::Node<Id = Self::Id, Error = Self::Error>;
 
-    type Get: Future<Item = Self::Node, Error = Self::Error>;
-
     /// It should be trivial to get the Id of a Node.
-    fn get<ID>(id: ID) -> Result<Self::Get, Self::Error>
-        where ID: id::Id;
+    fn get(&self, id: Self::Id) -> Box<Future<Item = Self::Node, Error = Self::Error>>;
 }
 
