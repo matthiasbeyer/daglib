@@ -6,22 +6,21 @@
 
 use std::fmt::Debug;
 
-use crate::node::Node;
-use crate::id::Id;
+use crate::node;
+use crate::id;
 
 use futures::future::Future;
 
 ///
 pub trait Repository: Debug {
-    type Id: Id;
+    type Id: id::Id;
     type Error: Debug;
-    type Node: Node<Id = Self::Id, Error = Self::Error>;
+    type Node: node::Node<Id = Self::Id, Error = Self::Error>;
 
     type Get: Future<Item = Self::Node, Error = Self::Error>;
 
     /// It should be trivial to get the Id of a Node.
     fn get<ID>(id: ID) -> Result<Self::Get, Self::Error>
-        where ID: Id;
-
+        where ID: id::Id;
 }
 
