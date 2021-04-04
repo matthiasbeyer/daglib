@@ -33,7 +33,7 @@ mod tests {
 
     #[test]
     fn test_backend_get() {
-        let b = test::Backend(vec![Some(test::Node {
+        let b = test::Backend::new(vec![Some(test::Node {
             id: test::Id(0),
             parents: vec![],
             data: 42,
@@ -53,7 +53,7 @@ mod tests {
 
     #[test]
     fn test_backend_put() {
-        let mut b = test::Backend(vec![Some(test::Node {
+        let mut b = test::Backend::new(vec![Some(test::Node {
             id: test::Id(0),
             parents: vec![],
             data: 42,

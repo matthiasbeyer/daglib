@@ -4,6 +4,9 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
 
+use std::sync::Arc;
+use std::sync::RwLock;
+
 use anyhow::Result;
 use async_trait::async_trait;
 
@@ -37,25 +40,31 @@ impl crate::Node for Node {
 /// A real backend would not implement the storage itself, but rather a way to retrieve the data
 /// from some storage mechansim (think IPFS), and thus `Clone`ing a backend is nothing esotheric.
 #[derive(Clone, Debug)]
-pub struct Backend(pub(crate) Vec<Option<Node>>);
+pub struct Backend(pub(crate) Arc<RwLock<Vec<Option<Node>>>>);
+
+impl Backend {
+    pub fn new(v: Vec<Option<Node>>) -> Self {
+        Backend(Arc::new(RwLock::new(v)))
+    }
+}
 
 #[async_trait]
 impl crate::DagBackend<Id, Node> for Backend {
     async fn get(&self, id: Id) -> Result<Option<Node>> {
-        if self.0.len() < id.0 + 1 {
+        if self.0.read().unwrap().len() < id.0 + 1 {
             Ok(None)
         } else {
-            Ok(self.0[id.0].clone())
+            Ok(self.0.read().unwrap()[id.0].clone())
         }
     }
 
     async fn put(&mut self, node: Node) -> Result<Id> {
-        while self.0.len() < node.id.0 + 1 {
-            self.0.push(None)
+        while self.0.read().unwrap().len() < node.id.0 + 1 {
+            self.0.write().unwrap().push(None)
         }
 
         let idx = node.id.0;
-        self.0[idx] = Some(node);
+        self.0.write().unwrap()[idx] = Some(node);
         Ok(Id(idx))
     }
 }

@@ -196,7 +196,7 @@ mod tests {
             data: 43,
         };
 
-        let b = test::Backend(vec![
+        let b = test::Backend::new(vec![
             {
                 Some(test::Node {
                     id: test::Id(0),
@@ -255,7 +255,7 @@ mod tests {
             data: 43,
         };
 
-        let b = test::Backend(vec![
+        let b = test::Backend::new(vec![
             {
                 Some(test::Node {
                     id: test::Id(0),
@@ -286,7 +286,7 @@ mod tests {
             parents: vec![],
             data: 42,
         };
-        let b = test::Backend(vec![Some(head.clone())]);
+        let b = test::Backend::new(vec![Some(head.clone())]);
 
         let dag = tokio_test::block_on(AsyncDag::new(b, head));
         assert!(dag.is_ok());
@@ -298,22 +298,22 @@ mod tests {
             data: 43,
         };
 
-        assert_eq!(dag.backend.0.len(), 1);
+        assert_eq!(dag.backend.0.read().unwrap().len(), 1);
         assert_eq!(dag.head, test::Id(0));
 
         let id = tokio_test::block_on(dag.update_head(new_head));
         assert!(id.is_ok());
         let id = id.unwrap();
 
-        assert_eq!(dag.backend.0.len(), 2);
+        assert_eq!(dag.backend.0.read().unwrap().len(), 2);
         assert_eq!(dag.head, test::Id(1));
 
-        assert_eq!(dag.backend.0[0].as_ref().unwrap().id, test::Id(0));
-        assert!(dag.backend.0[0].as_ref().unwrap().parents.is_empty());
+        assert_eq!(dag.backend.0.read().unwrap()[0].as_ref().unwrap().id, test::Id(0));
+        assert!(dag.backend.0.read().unwrap()[0].as_ref().unwrap().parents.is_empty());
 
-        assert_eq!(dag.backend.0[1].as_ref().unwrap().id, test::Id(1));
-        assert_eq!(dag.backend.0[1].as_ref().unwrap().parents.len(), 1);
-        assert_eq!(dag.backend.0[1].as_ref().unwrap().parents[0], test::Id(0));
+        assert_eq!(dag.backend.0.read().unwrap()[1].as_ref().unwrap().id, test::Id(1));
+        assert_eq!(dag.backend.0.read().unwrap()[1].as_ref().unwrap().parents.len(), 1);
+        assert_eq!(dag.backend.0.read().unwrap()[1].as_ref().unwrap().parents[0], test::Id(0));
     }
 
     #[test]
@@ -324,7 +324,7 @@ mod tests {
                 parents: vec![],
                 data: 42,
             };
-            let b = test::Backend(vec![Some(head.clone())]);
+            let b = test::Backend::new(vec![Some(head.clone())]);
             let dag = tokio_test::block_on(AsyncDag::new(b, head));
             assert!(dag.is_ok());
             dag.unwrap()
@@ -333,7 +333,7 @@ mod tests {
         let branched = dag.branch();
 
         {
-            assert_eq!(dag.backend.0.len(), 1);
+            assert_eq!(dag.backend.0.read().unwrap().len(), 1);
             assert_eq!(dag.head, test::Id(0));
             let new_head = test::Node {
                 id: test::Id(1),
@@ -345,11 +345,11 @@ mod tests {
             assert!(id.is_ok());
             let id = id.unwrap();
 
-            assert_eq!(dag.backend.0.len(), 2);
+            assert_eq!(dag.backend.0.read().unwrap().len(), 2);
             assert_eq!(dag.head, test::Id(1));
         }
 
-        assert_eq!(branched.backend.0.len(), 1);
+        assert_eq!(branched.backend.0.read().unwrap().len(), 1);
         assert_eq!(branched.head, test::Id(0));
     }
 
