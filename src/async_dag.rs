@@ -121,6 +121,19 @@ impl<Id, N, Backend> AsyncDag<Id, N, Backend>
             _node: std::marker::PhantomData,
         }
     }
+
+    /// Merge another AsyncDag into this one
+    ///
+    /// Use the `merger` function to merge the two head IDs and generate a new Node instance for
+    /// the new HEAD of `self`.
+    pub async fn merge<Merger>(&mut self, other: AsyncDag<Id, N, Backend>, merger: Merger) -> Result<Id>
+        where Merger: FnOnce(Id, Id) -> Result<N>
+    {
+        let node = merger(self.head.clone(), other.head)?;
+        let id = self.backend.put(node).await?;
+        self.head = id.clone();
+        Ok(id)
+    }
 }
 
 
@@ -351,6 +364,70 @@ mod tests {
 
         assert_eq!(branched.backend.0.read().unwrap().len(), 2);
         assert_eq!(branched.head, test::Id(0));
+    }
+
+    #[test]
+    fn test_merging() {
+        let mut dag = {
+            let head = test::Node {
+                id: test::Id(0),
+                parents: vec![],
+                data: 42,
+            };
+            let b = test::Backend::new(vec![Some(head.clone())]);
+            let dag = tokio_test::block_on(AsyncDag::new(b, head));
+            assert!(dag.is_ok());
+            dag.unwrap()
+        };
+
+        let mut branched = dag.branch();
+
+        {
+            assert_eq!(dag.backend.0.read().unwrap().len(), 1);
+            assert_eq!(dag.head, test::Id(0));
+            let new_head = test::Node {
+                id: test::Id(1),
+                parents: vec![test::Id(0)],
+                data: 43,
+            };
+
+            let id = tokio_test::block_on(dag.update_head(new_head));
+            assert!(id.is_ok());
+            let id = id.unwrap();
+
+            assert_eq!(dag.backend.0.read().unwrap().len(), 2);
+            assert_eq!(dag.head, test::Id(1));
+        }
+
+        {
+            assert_eq!(branched.backend.0.read().unwrap().len(), 2);
+            assert_eq!(branched.head, test::Id(0));
+            let new_head = test::Node {
+                id: test::Id(2),
+                parents: vec![test::Id(0)],
+                data: 44,
+            };
+
+            let id = tokio_test::block_on(branched.update_head(new_head));
+            assert!(id.is_ok());
+            let id = id.unwrap();
+
+            assert_eq!(branched.backend.0.read().unwrap().len(), 3);
+            assert_eq!(branched.head, test::Id(2));
+        }
+
+        let merge = tokio_test::block_on(dag.merge(branched, |left, right| {
+            Ok(test::Node {
+                id: test::Id(3),
+                parents: vec![left, right],
+                data: 45,
+            })
+        }));
+        assert!(merge.is_ok());
+        let merge = merge.unwrap();
+
+        assert_eq!(dag.backend.0.read().unwrap().len(), 4);
+        assert_eq!(dag.head, test::Id(3));
     }
 
 }
