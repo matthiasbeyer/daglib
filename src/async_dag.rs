@@ -126,10 +126,10 @@ impl<Id, N, Backend> AsyncDag<Id, N, Backend>
     ///
     /// Use the `merger` function to merge the two head IDs and generate a new Node instance for
     /// the new HEAD of `self`.
-    pub async fn merge<M>(&mut self, other: AsyncDag<Id, N, Backend>, merger: M) -> Result<Id>
+    pub async fn merge<M>(&mut self, other: &AsyncDag<Id, N, Backend>, merger: M) -> Result<Id>
         where M: Merger<Id, N>
     {
-        let node = merger.create_merge_node(self.head.clone(), other.head)?;
+        let node = merger.create_merge_node(&self.head, &other.head)?;
         let id = self.backend.put(node).await?;
         self.head = id.clone();
         Ok(id)
@@ -140,7 +140,7 @@ pub trait Merger<Id, N>
     where Id: NodeId,
           N: Node<Id = Id>
 {
-    fn create_merge_node(&self, left_id: Id, right_id: Id) -> Result<N>;
+    fn create_merge_node(&self, left_id: &Id, right_id: &Id) -> Result<N>;
 }
 
 
@@ -425,16 +425,16 @@ mod tests {
 
         struct M;
         impl super::Merger<test::Id, test::Node> for M {
-            fn create_merge_node(&self, left_id: test::Id, right_id: test::Id) -> Result<test::Node> {
+            fn create_merge_node(&self, left_id: &test::Id, right_id: &test::Id) -> Result<test::Node> {
                 Ok(test::Node {
                     id: test::Id(3),
-                    parents: vec![left_id, right_id],
+                    parents: vec![left_id.clone(), right_id.clone()],
                     data: 45,
                 })
             }
         }
 
-        let merge = tokio_test::block_on(dag.merge(branched, M));
+        let merge = tokio_test::block_on(dag.merge(&branched, M));
         assert!(merge.is_ok());
         let merge = merge.unwrap();
 
