@@ -10,12 +10,29 @@ use async_trait::async_trait;
 use crate::NodeId;
 use crate::Node;
 
+/// An interface to a DAG backend storage
+///
+/// A DAG backend storage is nothing more than a thing that can store (`DagBackend::put`) and load
+/// (`DagBackend::get`) nodes.
 #[async_trait]
 pub trait DagBackend<Id, N>
     where N: Node,
           Id: NodeId + Send
 {
+
+    /// Get a `Node` from the backend that is identified by `id`
+    ///
+    /// # Returns
+    ///
+    /// * Should return Err(_) if the operation failed.
+    /// * Should return Ok(None) if there is no node that is identified by `id`
+    ///
+    /// Otherwise Ok(Some(node)).
     async fn get(&self, id: Id) -> Result<Option<N>>;
+
+    /// Store a `node` in the backend, returning its `Id`
+    ///
+    /// This function should store the `node` in the backend and return the `id` the node has.
     async fn put(&mut self, node: N) -> Result<Id>;
 }
 

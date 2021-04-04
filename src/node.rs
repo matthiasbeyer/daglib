@@ -6,6 +6,7 @@
 
 use crate::NodeId;
 
+/// A Node in the DAG, holding the data.
 pub trait Node {
     type Id: NodeId;
 
