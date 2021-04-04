@@ -77,7 +77,7 @@ impl<Id, N, Backend> AsyncDag<Id, N, Backend>
             .collect()
     }
 
-    fn stream(&self) -> Stream<Id, N, Backend>  {
+    pub fn stream(&self) -> Stream<Id, N, Backend>  {
         Stream {
             dag: self,
             backlog: {
