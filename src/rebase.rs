@@ -130,3 +130,108 @@ impl<'a, Id, N, Backend, Selector, Rewriter> RebaseNodeRewriter<'a, Id, N, Backe
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+    use futures::StreamExt;
+
+    use crate::DagBackend;
+    use crate::AsyncDag;
+    use crate::test_impl as test;
+    use crate::rebase::*;
+
+    #[test]
+    fn test_rebase() {
+        let mut dag = {
+            let head = test::Node {
+                parents: vec![test::Id(3)],
+                data: 4,
+            };
+            let b = test::Backend::new(vec![
+                test::Node {
+                    parents: vec![],
+                    data: 0,
+                },
+                test::Node {
+                    parents: vec![test::Id(0)],
+                    data: 1,
+                },
+                test::Node {
+                    parents: vec![test::Id(1)],
+                    data: 2,
+                },
+                test::Node {
+                    parents: vec![test::Id(2)],
+                    data: 3,
+                },
+                {
+                    head.clone()
+                }
+            ].into_iter().map(Some).collect());
+            let dag = tokio_test::block_on(AsyncDag::new(b, head));
+            assert!(dag.is_ok());
+            dag.unwrap()
+        };
+
+        assert_eq!(dag.backend.0.read().unwrap().len(), 5);
+        assert_eq!(dag.head, test::Id(4));
+
+        struct Rewriter;
+
+        impl crate::NodeRewriter<test::Id, test::Node> for Rewriter {
+            fn rewrite_node(&mut self, previous_id: test::Id, id: test::Id, node: test::Node) -> Result<test::Node> {
+                Ok({
+                    test::Node {
+                        parents: vec![if previous_id == test::Id(1) {
+                            test::Id(1) // base we rebase on
+                        } else {
+                            test::Id(node.parents[0].0 + 10)
+                        }],
+                        data: node.data + 10,
+                    }
+                })
+            }
+        }
+
+        let new_head = dag.rebase()
+            .onto(test::Id(1))
+            .doing(Rewriter)
+            .run();
+
+        let new_head = tokio_test::block_on(new_head);
+        assert!(new_head.is_ok());
+        let new_head = new_head.unwrap();
+
+        // 15 because how the backend behaves
+        assert_eq!(dag.backend.0.read().unwrap().len(), 15, "Expected 15 elements in backend: {:?}", dag.backend.0.read().unwrap());
+
+        // actual nodes:
+        //  * 5 original: 0 <- 1 <- 2 <- 3 <- 4
+        //  * 3 rewritten: 0 <- 1 <- 12 <- 13 <- 14
+        assert_eq!(dag.backend.0.read().unwrap().iter().filter(|n| n.is_some()).count(), 5 + 3);
+        assert_eq!(dag.head, test::Id(14));
+
+        {
+            let backend: &Vec<_> = &dag.backend.0.read().unwrap();
+
+            // test NONE <- 0
+            assert_eq!(backend.iter().filter_map(|n| n.as_ref()).find(|n| n.data == 0).unwrap().parents.len(), 0);
+
+            // test 0 <- 1
+            assert_eq!(backend.iter().filter_map(|n| n.as_ref()).find(|n| n.data == 1).unwrap().parents.len(), 1);
+            assert_eq!(backend.iter().filter_map(|n| n.as_ref()).find(|n| n.data == 1).unwrap().parents[0], test::Id(0));
+
+            // test 1 <- 12
+            assert_eq!(backend.iter().filter_map(|n| n.as_ref()).find(|n| n.data == 12).unwrap().parents.len(), 1);
+            assert_eq!(backend.iter().filter_map(|n| n.as_ref()).find(|n| n.data == 12).unwrap().parents[0], test::Id(1));
+
+            // test 12 <- 13
+            assert_eq!(backend.iter().filter_map(|n| n.as_ref()).find(|n| n.data == 13).unwrap().parents.len(), 1);
+            assert_eq!(backend.iter().filter_map(|n| n.as_ref()).find(|n| n.data == 13).unwrap().parents[0], test::Id(12));
+
+            // test 13 <- 14
+            assert_eq!(backend.iter().filter_map(|n| n.as_ref()).find(|n| n.data == 14).unwrap().parents.len(), 1);
+            assert_eq!(backend.iter().filter_map(|n| n.as_ref()).find(|n| n.data == 14).unwrap().parents[0], test::Id(13));
+        }
+    }
+}
