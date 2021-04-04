@@ -37,13 +37,6 @@ pub trait DagBackend<Id, N>
 
 #[cfg(test)]
 mod tests {
-    use std::pin::Pin;
-
-    use anyhow::Result;
-    use anyhow::anyhow;
-    use async_trait::async_trait;
-    use tokio_test::block_on;
-
     use crate::test_impl as test;
     use crate::*;
 
@@ -72,7 +65,7 @@ mod tests {
             data: 0,
         })]);
 
-        let id = tokio_test::block_on(b.put({
+        let _ = tokio_test::block_on(b.put({
             test::Node {
                 parents: vec![],
                 data: 1,

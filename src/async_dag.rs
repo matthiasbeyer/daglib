@@ -215,12 +215,8 @@ impl<'a, Id, N, Backend> futures::stream::Stream for Stream<'a, Id, N, Backend>
 
 #[cfg(test)]
 mod tests {
-    use std::pin::Pin;
 
     use anyhow::Result;
-    use anyhow::anyhow;
-    use async_trait::async_trait;
-    use tokio_test::block_on;
     use futures::StreamExt;
 
     use crate::DagBackend;
@@ -334,7 +330,7 @@ mod tests {
 
         let id = tokio_test::block_on(dag.update_head(new_head));
         assert!(id.is_ok());
-        let id = id.unwrap();
+        let _ = id.unwrap();
 
         assert_eq!(dag.backend.0.read().unwrap().len(), 2);
         assert_eq!(dag.head, test::Id(1));
@@ -372,7 +368,7 @@ mod tests {
 
             let id = tokio_test::block_on(dag.update_head(new_head));
             assert!(id.is_ok());
-            let id = id.unwrap();
+            let _ = id.unwrap();
 
             assert_eq!(dag.backend.0.read().unwrap().len(), 2);
             assert_eq!(dag.head, test::Id(1));
@@ -407,7 +403,7 @@ mod tests {
 
             let id = tokio_test::block_on(dag.update_head(new_head));
             assert!(id.is_ok());
-            let id = id.unwrap();
+            let _ = id.unwrap();
 
             assert_eq!(dag.backend.0.read().unwrap().len(), 2);
             assert_eq!(dag.head, test::Id(1));
@@ -423,7 +419,7 @@ mod tests {
 
             let id = tokio_test::block_on(branched.update_head(new_head));
             assert!(id.is_ok());
-            let id = id.unwrap();
+            let _ = id.unwrap();
 
             assert_eq!(branched.backend.0.read().unwrap().len(), 3);
             assert_eq!(branched.head, test::Id(2));
@@ -441,7 +437,7 @@ mod tests {
 
         let merge = tokio_test::block_on(dag.merge(&branched, M));
         assert!(merge.is_ok());
-        let merge = merge.unwrap();
+        let _ = merge.unwrap();
 
         assert_eq!(dag.backend.0.read().unwrap().len(), 4);
         assert_eq!(dag.head, test::Id(3));
