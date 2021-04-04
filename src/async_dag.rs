@@ -107,6 +107,20 @@ impl<Id, N, Backend> AsyncDag<Id, N, Backend>
         self.head = id.clone();
         Ok(id)
     }
+
+    /// Branch from the current head.
+    ///
+    /// This function creates a new AsyncDag object with the same backend (thus the backend must be
+    /// `Clone` in this case).
+    pub fn branch(&self) -> AsyncDag<Id, N, Backend>
+        where Backend: Clone
+    {
+        AsyncDag {
+            head: self.head.clone(),
+            backend: self.backend.clone(),
+            _node: std::marker::PhantomData,
+        }
+    }
 }
 
 
@@ -300,6 +314,43 @@ mod tests {
         assert_eq!(dag.backend.0[1].as_ref().unwrap().id, test::Id(1));
         assert_eq!(dag.backend.0[1].as_ref().unwrap().parents.len(), 1);
         assert_eq!(dag.backend.0[1].as_ref().unwrap().parents[0], test::Id(0));
+    }
+
+    #[test]
+    fn test_branch() {
+        let mut dag = {
+            let head = test::Node {
+                id: test::Id(0),
+                parents: vec![],
+                data: 42,
+            };
+            let b = test::Backend(vec![Some(head.clone())]);
+            let dag = tokio_test::block_on(AsyncDag::new(b, head));
+            assert!(dag.is_ok());
+            dag.unwrap()
+        };
+
+        let branched = dag.branch();
+
+        {
+            assert_eq!(dag.backend.0.len(), 1);
+            assert_eq!(dag.head, test::Id(0));
+            let new_head = test::Node {
+                id: test::Id(1),
+                parents: vec![test::Id(0)],
+                data: 43,
+            };
+
+            let id = tokio_test::block_on(dag.update_head(new_head));
+            assert!(id.is_ok());
+            let id = id.unwrap();
+
+            assert_eq!(dag.backend.0.len(), 2);
+            assert_eq!(dag.head, test::Id(1));
+        }
+
+        assert_eq!(branched.backend.0.len(), 1);
+        assert_eq!(branched.head, test::Id(0));
     }
 
 }

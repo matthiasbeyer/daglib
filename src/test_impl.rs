@@ -31,7 +31,12 @@ impl crate::Node for Node {
     }
 }
 
-#[derive(Debug)]
+/// The backend for the tests
+///
+/// This is `Clone` because we can test branching only with a clonable backend.
+/// A real backend would not implement the storage itself, but rather a way to retrieve the data
+/// from some storage mechansim (think IPFS), and thus `Clone`ing a backend is nothing esotheric.
+#[derive(Clone, Debug)]
 pub struct Backend(pub(crate) Vec<Option<Node>>);
 
 #[async_trait]
