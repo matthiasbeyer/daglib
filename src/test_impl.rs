@@ -17,17 +17,13 @@ impl crate::NodeId for Id {}
 
 #[derive(Clone, Debug)]
 pub struct Node {
-    pub(crate) id: Id,
     pub(crate) parents: Vec<Id>,
-    pub(crate) data: u8,
+    // data the node holds, used to create the ID in tests as "hashing" for unique id
+    pub(crate) data: usize,
 }
 
 impl crate::Node for Node {
     type Id = Id;
-
-    fn id(&self) -> &Self::Id {
-        &self.id
-    }
 
     fn parent_ids(&self) -> Vec<Self::Id> {
         self.parents.clone()
@@ -50,20 +46,20 @@ impl Backend {
 
 #[async_trait]
 impl crate::DagBackend<Id, Node> for Backend {
-    async fn get(&self, id: Id) -> Result<Option<Node>> {
+    async fn get(&self, id: Id) -> Result<Option<(Id, Node)>> {
         if self.0.read().unwrap().len() < id.0 + 1 {
             Ok(None)
         } else {
-            Ok(self.0.read().unwrap()[id.0].clone())
+            Ok(self.0.read().unwrap()[id.0].clone().map(|node| (id, node)))
         }
     }
 
     async fn put(&mut self, node: Node) -> Result<Id> {
-        while self.0.read().unwrap().len() < node.id.0 + 1 {
+        while self.0.read().unwrap().len() < node.data + 1 {
             self.0.write().unwrap().push(None)
         }
 
-        let idx = node.id.0;
+        let idx = node.data;
         self.0.write().unwrap()[idx] = Some(node);
         Ok(Id(idx))
     }

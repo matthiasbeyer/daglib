@@ -26,9 +26,8 @@ pub trait DagBackend<Id, N>
     ///
     /// * Should return Err(_) if the operation failed.
     /// * Should return Ok(None) if there is no node that is identified by `id`
-    ///
-    /// Otherwise Ok(Some(node)).
-    async fn get(&self, id: Id) -> Result<Option<N>>;
+    /// * Otherwise return the Id along with the node identified by it
+    async fn get(&self, id: Id) -> Result<Option<(Id, N)>>;
 
     /// Store a `node` in the backend, returning its `Id`
     ///
@@ -51,9 +50,8 @@ mod tests {
     #[test]
     fn test_backend_get() {
         let b = test::Backend::new(vec![Some(test::Node {
-            id: test::Id(0),
             parents: vec![],
-            data: 42,
+            data: 0,
         })]);
 
         let node = tokio_test::block_on(b.get(test::Id(0)));
@@ -63,24 +61,21 @@ mod tests {
         assert!(node.is_some());
         let node = node.unwrap();
 
-        assert_eq!(node.data, 42);
-        assert_eq!(node.id, test::Id(0));
-        assert!(node.parents.is_empty());
+        assert_eq!(node.0, test::Id(0));
+        assert!(node.1.parents.is_empty());
     }
 
     #[test]
     fn test_backend_put() {
         let mut b = test::Backend::new(vec![Some(test::Node {
-            id: test::Id(0),
             parents: vec![],
-            data: 42,
+            data: 0,
         })]);
 
         let id = tokio_test::block_on(b.put({
             test::Node {
-                id: test::Id(1),
                 parents: vec![],
-                data: 43,
+                data: 1,
             }
         }));
 
@@ -92,9 +87,8 @@ mod tests {
             assert!(node.is_some());
             let node = node.unwrap();
 
-            assert_eq!(node.data, 42);
-            assert_eq!(node.id, test::Id(0));
-            assert!(node.parents.is_empty());
+            assert_eq!(node.0, test::Id(0));
+            assert!(node.1.parents.is_empty());
         }
         {
             let node = tokio_test::block_on(b.get(test::Id(1)));
@@ -104,9 +98,8 @@ mod tests {
             assert!(node.is_some());
             let node = node.unwrap();
 
-            assert_eq!(node.data, 43);
-            assert_eq!(node.id, test::Id(1));
-            assert!(node.parents.is_empty());
+            assert_eq!(node.0, test::Id(1));
+            assert!(node.1.parents.is_empty());
         }
         {
             let node = tokio_test::block_on(b.get(test::Id(2)));
