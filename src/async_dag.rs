@@ -88,6 +88,19 @@ impl<Id, N, Backend> AsyncDag<Id, N, Backend>
         }
     }
 
+    pub async fn update_head(&mut self, node: N) -> Result<Id> {
+        if node.parent_ids().iter().any(|id| id == &self.head) {
+            self.update_head_unchecked(node).await
+        } else {
+            Err(anyhow!("Node does not have HEAD as parent"))
+        }
+    }
+
+    pub async fn update_head_unchecked(&mut self, node: N) -> Result<Id> {
+        let id = self.backend.put(node).await?;
+        self.head = id.clone();
+        Ok(id)
+    }
 }
 
 
@@ -149,6 +162,7 @@ mod tests {
     use anyhow::anyhow;
     use async_trait::async_trait;
     use tokio_test::block_on;
+    use futures::StreamExt;
 
     use crate::DagBackend;
     use crate::AsyncDag;
@@ -212,10 +226,9 @@ mod tests {
             assert!(node.parents.is_empty());
         }
     }
+
     #[test]
     fn test_dag_two_nodes_stream() {
-        use futures::StreamExt;
-
         let head = test::Node {
             id: test::Id(1),
             parents: vec![test::Id(0)],
@@ -244,6 +257,43 @@ mod tests {
         assert_eq!(v.len(), 2, "Expected two nodes: {:?}", v);
         assert_eq!(v[0].as_ref().unwrap().id, test::Id(1));
         assert_eq!(v[1].as_ref().unwrap().id, test::Id(0));
+    }
+
+    #[test]
+    fn test_adding_head() {
+        let head = test::Node {
+            id: test::Id(0),
+            parents: vec![],
+            data: 42,
+        };
+        let b = test::Backend(vec![Some(head.clone())]);
+
+        let dag = tokio_test::block_on(AsyncDag::new(b, head));
+        assert!(dag.is_ok());
+        let mut dag = dag.unwrap();
+
+        let new_head = test::Node {
+            id: test::Id(1),
+            parents: vec![test::Id(0)],
+            data: 43,
+        };
+
+        assert_eq!(dag.backend.0.len(), 1);
+        assert_eq!(dag.head, test::Id(0));
+
+        let id = tokio_test::block_on(dag.update_head(new_head));
+        assert!(id.is_ok());
+        let id = id.unwrap();
+
+        assert_eq!(dag.backend.0.len(), 2);
+        assert_eq!(dag.head, test::Id(1));
+
+        assert_eq!(dag.backend.0[0].as_ref().unwrap().id, test::Id(0));
+        assert!(dag.backend.0[0].as_ref().unwrap().parents.is_empty());
+
+        assert_eq!(dag.backend.0[1].as_ref().unwrap().id, test::Id(1));
+        assert_eq!(dag.backend.0[1].as_ref().unwrap().parents.len(), 1);
+        assert_eq!(dag.backend.0[1].as_ref().unwrap().parents[0], test::Id(0));
     }
 
 }
