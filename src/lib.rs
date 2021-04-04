@@ -4,6 +4,18 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
 
-pub mod id;
-pub mod node;
-pub mod repository;
+mod async_dag;
+pub use async_dag::*;
+
+mod dag_backend;
+pub use dag_backend::*;
+
+mod node;
+pub use node::*;
+
+mod node_id;
+pub use node_id::*;
+
+#[cfg(test)]
+mod test_impl;
+

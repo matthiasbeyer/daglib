@@ -1,7 +1,8 @@
 # daglib
 
-Generic library for working with DAG data structures. Based on futures, so that
-it can be used in a async context.
+Async DAG library generic over Node type, Node Identifier Type and Backend
+(storage of the DAG).
+
 
 ## Status
 
