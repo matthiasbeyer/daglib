@@ -65,29 +65,6 @@ impl<Id, N, Backend> AsyncDag<Id, N, Backend>
             })
     }
 
-    pub async fn get_next(&self, id: Id) -> Result<Vec<N>> {
-        self.backend
-            .get(id)
-            .await?
-            .map(|tpl| tpl.1)
-            .ok_or_else(|| anyhow!("ID Not found"))?
-            .parent_ids()
-            .into_iter()
-            .map(|id| async move {
-                self.backend
-                    .get(id)
-                    .await
-                    .transpose()
-            })
-            .collect::<futures::stream::FuturesUnordered<_>>()
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .filter_map(|o| o)
-            .map(|r| r.map(|tpl| tpl.1))
-            .collect()
-    }
-
     /// Iterate over the DAG
     ///
     /// This function returns a Stream over all nodes in the DAG.
@@ -263,18 +240,6 @@ mod tests {
             assert!(has_id.is_ok());
             let has_id = has_id.unwrap();
             assert!(has_id);
-        }
-
-        {
-            let next = tokio_test::block_on(dag.get_next(test::Id(1)));
-            assert!(next.is_ok());
-            let mut next = next.unwrap();
-            assert_eq!(next.len(), 1);
-            let node = next.pop();
-            assert!(node.is_some());
-            let node = node.unwrap();
-            assert_eq!(node.data, 0);
-            assert!(node.parents.is_empty());
         }
     }
 
