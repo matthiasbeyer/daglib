@@ -56,7 +56,7 @@ impl<Id, N, Backend> AsyncDag<Id, N, Backend>
             })
     }
 
-    async fn get_next(&self, id: Id) -> Result<Vec<N>> {
+    pub async fn get_next(&self, id: Id) -> Result<Vec<N>> {
         self.backend
             .get(id)
             .await?
