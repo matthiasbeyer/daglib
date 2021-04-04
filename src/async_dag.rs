@@ -15,8 +15,9 @@ pub struct AsyncDag<Id, N, Backend>
           N: Node<Id = Id>,
           Backend: DagBackend<Id, N>
 {
-    head: N,
+    head: Id,
     backend: Backend,
+    _node: std::marker::PhantomData<N>,
 }
 
 impl<Id, N, Backend> AsyncDag<Id, N, Backend>
@@ -30,8 +31,9 @@ impl<Id, N, Backend> AsyncDag<Id, N, Backend>
             .await?
             .map(|node| {
                 AsyncDag {
-                    head: node,
-                    backend: backend
+                    head: node.id().clone(),
+                    backend: backend,
+                    _node: std::marker::PhantomData,
                 }
             })
             .ok_or_else(|| anyhow!("Head not found in backend"))
@@ -80,7 +82,7 @@ impl<Id, N, Backend> AsyncDag<Id, N, Backend>
             dag: self,
             backlog: {
                 let mut v = Vec::with_capacity(2);
-                v.push(self.backend.get(self.head.id().clone()));
+                v.push(self.backend.get(self.head.clone()));
                 v
             }
         }
