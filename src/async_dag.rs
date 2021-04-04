@@ -349,7 +349,7 @@ mod tests {
             assert_eq!(dag.head, test::Id(1));
         }
 
-        assert_eq!(branched.backend.0.read().unwrap().len(), 1);
+        assert_eq!(branched.backend.0.read().unwrap().len(), 2);
         assert_eq!(branched.head, test::Id(0));
     }
 
