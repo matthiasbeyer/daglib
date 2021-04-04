@@ -158,6 +158,10 @@ where
         self.head = id.clone();
         Ok(id)
     }
+
+    pub fn rebase(&mut self) -> crate::Rebase<'_, Id, N, Backend> {
+        crate::rebase::Rebase(self)
+    }
 }
 
 pub trait Merger<Id, N>
