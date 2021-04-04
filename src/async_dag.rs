@@ -22,8 +22,8 @@ where
     N: Node<Id = Id>,
     Backend: DagBackend<Id, N>,
 {
-    head: Id,
-    backend: Backend,
+    pub(crate) head: Id,
+    pub(crate) backend: Backend,
     _node: std::marker::PhantomData<N>,
 }
 
