@@ -65,6 +65,10 @@ impl<Id, N, Backend> AsyncDag<Id, N, Backend>
             .ok_or_else(|| anyhow!("Node not found"))
     }
 
+    pub fn head(&self) -> &Id {
+        &self.head
+    }
+
     /// Check whether an `id` is in the DAG.
     pub async fn has_id(&self, id: &Id) -> Result<bool> {
         self.stream()
