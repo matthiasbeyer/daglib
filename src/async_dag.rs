@@ -47,6 +47,24 @@ impl<Id, N, Backend> AsyncDag<Id, N, Backend>
             })
     }
 
+    /// Load a AsyncDag object using `head` as HEAD node.
+    ///
+    /// # Warning
+    ///
+    /// This fails if backend.get(head) fails.
+    pub async fn load(backend: Backend, head: Id) -> Result<Self> {
+        backend.get(head)
+            .await?
+            .map(|(id, _)| {
+                AsyncDag {
+                    head: id,
+                    backend: backend,
+                    _node: std::marker::PhantomData,
+                }
+            })
+            .ok_or_else(|| anyhow!("Node not found"))
+    }
+
     /// Check whether an `id` is in the DAG.
     pub async fn has_id(&self, id: &Id) -> Result<bool> {
         self.stream()
