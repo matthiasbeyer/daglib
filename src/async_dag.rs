@@ -69,6 +69,14 @@ impl<Id, N, Backend> AsyncDag<Id, N, Backend>
         &self.head
     }
 
+    pub fn backend(&self) -> &Backend {
+        &self.backend
+    }
+
+    pub fn backend_mut(&mut self) -> &mut Backend {
+        &mut self.backend
+    }
+
     /// Check whether an `id` is in the DAG.
     pub async fn has_id(&self, id: &Id) -> Result<bool> {
         self.stream()
