@@ -133,9 +133,7 @@ impl<'a, Id, N, Backend, Selector, Rewriter> RebaseNodeRewriter<'a, Id, N, Backe
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
-    use futures::StreamExt;
 
-    use crate::DagBackend;
     use crate::AsyncDag;
     use crate::test_impl as test;
     use crate::rebase::*;
@@ -179,7 +177,7 @@ mod tests {
         struct Rewriter;
 
         impl crate::NodeRewriter<test::Id, test::Node> for Rewriter {
-            fn rewrite_node(&mut self, previous_id: test::Id, id: test::Id, node: test::Node) -> Result<test::Node> {
+            fn rewrite_node(&mut self, previous_id: test::Id, _id: test::Id, node: test::Node) -> Result<test::Node> {
                 Ok({
                     test::Node {
                         parents: vec![if previous_id == test::Id(1) {
@@ -200,7 +198,7 @@ mod tests {
 
         let new_head = tokio_test::block_on(new_head);
         assert!(new_head.is_ok());
-        let new_head = new_head.unwrap();
+        let _ = new_head.unwrap();
 
         // 15 because how the backend behaves
         assert_eq!(dag.backend.0.read().unwrap().len(), 15, "Expected 15 elements in backend: {:?}", dag.backend.0.read().unwrap());
