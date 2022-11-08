@@ -7,8 +7,8 @@
 use anyhow::Result;
 use async_trait::async_trait;
 
-use crate::NodeId;
 use crate::Node;
+use crate::NodeId;
 
 /// An interface to a DAG backend storage
 ///
@@ -16,10 +16,10 @@ use crate::Node;
 /// (`DagBackend::get`) nodes.
 #[async_trait]
 pub trait DagBackend<Id, N>
-    where N: Node,
-          Id: NodeId + Send
+where
+    N: Node,
+    Id: NodeId + Send,
 {
-
     /// Get a `Node` from the backend that is identified by `id`
     ///
     /// # Returns
@@ -102,5 +102,4 @@ mod tests {
             assert!(node.is_none());
         }
     }
-
 }

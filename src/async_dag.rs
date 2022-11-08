@@ -6,20 +6,21 @@
 
 use std::pin::Pin;
 
-use anyhow::Result;
 use anyhow::anyhow;
+use anyhow::Result;
 use futures::stream::StreamExt;
 use futures::task::Poll;
 
+use crate::DagBackend;
 use crate::Node;
 use crate::NodeId;
-use crate::DagBackend;
 
 /// An async DAG, generic over Node, Node identifier and Backend implementation
 pub struct AsyncDag<Id, N, Backend>
-    where Id: NodeId + Send,
-          N: Node<Id = Id>,
-          Backend: DagBackend<Id, N>
+where
+    Id: NodeId + Send,
+    N: Node<Id = Id>,
+    Backend: DagBackend<Id, N>,
 {
     head: Id,
     backend: Backend,
@@ -27,24 +28,20 @@ pub struct AsyncDag<Id, N, Backend>
 }
 
 impl<Id, N, Backend> AsyncDag<Id, N, Backend>
-    where Id: NodeId + Send,
-          N: Node<Id = Id>,
-          Backend: DagBackend<Id, N>
+where
+    Id: NodeId + Send,
+    N: Node<Id = Id>,
+    Backend: DagBackend<Id, N>,
 {
     /// Create a new DAG with a backend and a HEAD node
     ///
     /// The head node is `DagBackend::put` into the backend before the AsyncDag object is created.
     pub async fn new(mut backend: Backend, head: N) -> Result<Self> {
-        backend
-            .put(head)
-            .await
-            .map(|id| {
-                AsyncDag {
-                    head: id,
-                    backend: backend,
-                    _node: std::marker::PhantomData,
-                }
-            })
+        backend.put(head).await.map(|id| AsyncDag {
+            head: id,
+            backend: backend,
+            _node: std::marker::PhantomData,
+        })
     }
 
     /// Load a AsyncDag object using `head` as HEAD node.
@@ -53,14 +50,13 @@ impl<Id, N, Backend> AsyncDag<Id, N, Backend>
     ///
     /// This fails if backend.get(head) fails.
     pub async fn load(backend: Backend, head: Id) -> Result<Self> {
-        backend.get(head)
+        backend
+            .get(head)
             .await?
-            .map(|(id, _)| {
-                AsyncDag {
-                    head: id,
-                    backend: backend,
-                    _node: std::marker::PhantomData,
-                }
+            .map(|(id, _)| AsyncDag {
+                head: id,
+                backend: backend,
+                _node: std::marker::PhantomData,
             })
             .ok_or_else(|| anyhow!("Node not found"))
     }
@@ -80,18 +76,14 @@ impl<Id, N, Backend> AsyncDag<Id, N, Backend>
     /// Check whether an `id` is in the DAG.
     pub async fn has_id(&self, id: &Id) -> Result<bool> {
         self.stream()
-            .map(|r| -> Result<bool> {
-                r.map(|(ref node_id, _)| node_id == id)
-            })
+            .map(|r| -> Result<bool> { r.map(|(ref node_id, _)| node_id == id) })
             .collect::<Vec<Result<bool>>>()
             .await
             .into_iter()
-            .fold(Ok(false), |acc, e| {
-                match (acc, e) {
-                    (Err(e), _) => Err(e),
-                    (Ok(_), Err(e)) => Err(e),
-                    (Ok(a), Ok(b)) => Ok(a || b),
-                }
+            .fold(Ok(false), |acc, e| match (acc, e) {
+                (Err(e), _) => Err(e),
+                (Ok(_), Err(e)) => Err(e),
+                (Ok(a), Ok(b)) => Ok(a || b),
             })
     }
 
@@ -102,14 +94,14 @@ impl<Id, N, Backend> AsyncDag<Id, N, Backend>
     /// # Warning
     ///
     /// The order of the nodes is not (yet) guaranteed.
-    pub fn stream(&self) -> Stream<Id, N, Backend>  {
+    pub fn stream(&self) -> Stream<Id, N, Backend> {
         Stream {
             dag: self,
             backlog: {
                 let mut v = Vec::with_capacity(2);
                 v.push(self.backend.get(self.head.clone()));
                 v
-            }
+            },
         }
     }
 
@@ -143,7 +135,8 @@ impl<Id, N, Backend> AsyncDag<Id, N, Backend>
     /// This function creates a new AsyncDag object with the same backend (thus the backend must be
     /// `Clone` in this case).
     pub fn branch(&self) -> AsyncDag<Id, N, Backend>
-        where Backend: Clone
+    where
+        Backend: Clone,
     {
         AsyncDag {
             head: self.head.clone(),
@@ -157,7 +150,8 @@ impl<Id, N, Backend> AsyncDag<Id, N, Backend>
     /// Use the `merger` function to merge the two head IDs and generate a new Node instance for
     /// the new HEAD of `self`.
     pub async fn merge<M>(&mut self, other: &AsyncDag<Id, N, Backend>, merger: M) -> Result<Id>
-        where M: Merger<Id, N>
+    where
+        M: Merger<Id, N>,
     {
         let node = merger.create_merge_node(&self.head, &other.head)?;
         let id = self.backend.put(node).await?;
@@ -167,16 +161,18 @@ impl<Id, N, Backend> AsyncDag<Id, N, Backend>
 }
 
 pub trait Merger<Id, N>
-    where Id: NodeId,
-          N: Node<Id = Id>
+where
+    Id: NodeId,
+    N: Node<Id = Id>,
 {
     fn create_merge_node(&self, left_id: &Id, right_id: &Id) -> Result<N>;
 }
 
 impl<Id, N, F> Merger<Id, N> for F
-    where Id: NodeId,
-          N: Node<Id = Id>,
-          F: Fn(&Id, &Id) -> Result<N>,
+where
+    Id: NodeId,
+    N: Node<Id = Id>,
+    F: Fn(&Id, &Id) -> Result<N>,
 {
     fn create_merge_node(&self, left_id: &Id, right_id: &Id) -> Result<N> {
         (self)(left_id, right_id)
@@ -185,22 +181,35 @@ impl<Id, N, F> Merger<Id, N> for F
 
 /// Stream adapter for streaming all nodes in a DAG
 pub struct Stream<'a, Id, N, Backend>
-    where Id: NodeId + Send,
-          N: Node<Id = Id>,
-          Backend: DagBackend<Id, N>
+where
+    Id: NodeId + Send,
+    N: Node<Id = Id>,
+    Backend: DagBackend<Id, N>,
 {
     dag: &'a AsyncDag<Id, N, Backend>,
-    backlog: Vec<Pin<Box<(dyn futures::future::Future<Output = Result<Option<(Id, N)>>> + std::marker::Send + 'a)>>>,
+    backlog: Vec<
+        Pin<
+            Box<
+                (dyn futures::future::Future<Output = Result<Option<(Id, N)>>>
+                     + std::marker::Send
+                     + 'a),
+            >,
+        >,
+    >,
 }
 
 impl<'a, Id, N, Backend> futures::stream::Stream for Stream<'a, Id, N, Backend>
-    where Id: NodeId + Send,
-          N: Node<Id = Id>,
-          Backend: DagBackend<Id, N>
+where
+    Id: NodeId + Send,
+    N: Node<Id = Id>,
+    Backend: DagBackend<Id, N>,
 {
     type Item = Result<(Id, N)>;
 
-    fn poll_next(mut self: std::pin::Pin<&mut Self>, cx: &mut futures::task::Context<'_>) -> futures::task::Poll<Option<Self::Item>> {
+    fn poll_next(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut futures::task::Context<'_>,
+    ) -> futures::task::Poll<Option<Self::Item>> {
         if let Some(mut fut) = self.as_mut().backlog.pop() {
             match fut.as_mut().poll(cx) {
                 Poll::Ready(Err(e)) => Poll::Ready(Some(Err(e))),
@@ -210,14 +219,14 @@ impl<'a, Id, N, Backend> futures::stream::Stream for Stream<'a, Id, N, Backend>
                         self.as_mut().backlog.push(fut);
                     }
                     Poll::Ready(Some(Ok((node_id, node))))
-                },
+                }
                 Poll::Ready(Ok(None)) => {
                     // backend.get() returned Ok(None), so the referenced node seems not to exist
                     //
                     // TODO: Decide whether we should return an error here.
                     cx.waker().wake_by_ref();
                     Poll::Pending
-                },
+                }
                 Poll::Pending => {
                     cx.waker().wake_by_ref();
                     Poll::Pending
@@ -229,16 +238,15 @@ impl<'a, Id, N, Backend> futures::stream::Stream for Stream<'a, Id, N, Backend>
     }
 }
 
-
 #[cfg(test)]
 mod tests {
 
     use anyhow::Result;
     use futures::StreamExt;
 
-    use crate::DagBackend;
-    use crate::AsyncDag;
     use crate::test_impl as test;
+    use crate::AsyncDag;
+    use crate::DagBackend;
 
     #[test]
     fn test_dag_two_nodes() {
@@ -254,9 +262,7 @@ mod tests {
                     data: 0,
                 })
             },
-            {
-                Some(head.clone())
-            },
+            { Some(head.clone()) },
         ]);
 
         {
@@ -297,9 +303,7 @@ mod tests {
                     data: 0,
                 })
             },
-            {
-                Some(head.clone())
-            },
+            { Some(head.clone()) },
         ]);
 
         let dag = tokio_test::block_on(AsyncDag::new(b, head));
@@ -341,11 +345,25 @@ mod tests {
         assert_eq!(dag.head, test::Id(1));
 
         assert_eq!(dag.backend.0.read().unwrap()[0].as_ref().unwrap().data, 0);
-        assert!(dag.backend.0.read().unwrap()[0].as_ref().unwrap().parents.is_empty());
+        assert!(dag.backend.0.read().unwrap()[0]
+            .as_ref()
+            .unwrap()
+            .parents
+            .is_empty());
 
         assert_eq!(dag.backend.0.read().unwrap()[1].as_ref().unwrap().data, 1);
-        assert_eq!(dag.backend.0.read().unwrap()[1].as_ref().unwrap().parents.len(), 1);
-        assert_eq!(dag.backend.0.read().unwrap()[1].as_ref().unwrap().parents[0], test::Id(0));
+        assert_eq!(
+            dag.backend.0.read().unwrap()[1]
+                .as_ref()
+                .unwrap()
+                .parents
+                .len(),
+            1
+        );
+        assert_eq!(
+            dag.backend.0.read().unwrap()[1].as_ref().unwrap().parents[0],
+            test::Id(0)
+        );
     }
 
     #[test]
@@ -432,7 +450,11 @@ mod tests {
 
         struct M;
         impl super::Merger<test::Id, test::Node> for M {
-            fn create_merge_node(&self, left_id: &test::Id, right_id: &test::Id) -> Result<test::Node> {
+            fn create_merge_node(
+                &self,
+                left_id: &test::Id,
+                right_id: &test::Id,
+            ) -> Result<test::Node> {
                 Ok(test::Node {
                     parents: vec![left_id.clone(), right_id.clone()],
                     data: 3,
@@ -495,12 +517,15 @@ mod tests {
             assert_eq!(branched.head, test::Id(2));
         }
 
-        let merge = tokio_test::block_on(dag.merge(&branched, |left_id: &test::Id, right_id: &test::Id| {
-            Ok(test::Node {
-                parents: vec![left_id.clone(), right_id.clone()],
-                data: 3,
-            })
-        }));
+        let merge = tokio_test::block_on(dag.merge(
+            &branched,
+            |left_id: &test::Id, right_id: &test::Id| {
+                Ok(test::Node {
+                    parents: vec![left_id.clone(), right_id.clone()],
+                    data: 3,
+                })
+            },
+        ));
         assert!(merge.is_ok());
         let _ = merge.unwrap();
 
@@ -508,4 +533,3 @@ mod tests {
         assert_eq!(dag.head, test::Id(3));
     }
 }
-

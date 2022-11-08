@@ -64,4 +64,3 @@ impl crate::DagBackend<Id, Node> for Backend {
         Ok(Id(idx))
     }
 }
-
