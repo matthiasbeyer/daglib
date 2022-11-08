@@ -16,5 +16,8 @@ pub use node::*;
 mod node_id;
 pub use node_id::*;
 
+mod rebase;
+pub use rebase::*;
+
 #[cfg(test)]
 mod test_impl;
