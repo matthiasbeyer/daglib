@@ -39,7 +39,7 @@ where
     pub async fn new(mut backend: Backend, head: N) -> Result<Self> {
         backend.put(head).await.map(|id| AsyncDag {
             head: id,
-            backend: backend,
+            backend,
             _node: std::marker::PhantomData,
         })
     }
@@ -55,7 +55,7 @@ where
             .await?
             .map(|(id, _)| AsyncDag {
                 head: id,
-                backend: backend,
+                backend,
                 _node: std::marker::PhantomData,
             })
             .ok_or_else(|| anyhow!("Node not found"))
