@@ -451,7 +451,7 @@ mod tests {
                 right_id: &test::Id,
             ) -> Result<test::Node> {
                 Ok(test::Node {
-                    parents: vec![left_id.clone(), right_id.clone()],
+                    parents: vec![*left_id, *right_id],
                     data: 3,
                 })
             }
@@ -516,7 +516,7 @@ mod tests {
             &branched,
             |left_id: &test::Id, right_id: &test::Id| {
                 Ok(test::Node {
-                    parents: vec![left_id.clone(), right_id.clone()],
+                    parents: vec![*left_id, *right_id],
                     data: 3,
                 })
             },
