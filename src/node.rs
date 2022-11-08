@@ -11,4 +11,3 @@ pub trait Node {
     type Id: NodeId;
     fn parent_ids(&self) -> Vec<Self::Id>;
 }
-
