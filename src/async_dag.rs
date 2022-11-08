@@ -187,16 +187,11 @@ where
     Backend: DagBackend<Id, N>,
 {
     dag: &'a AsyncDag<Id, N, Backend>,
-    backlog: Vec<
-        Pin<
-            Box<
-                (dyn futures::future::Future<Output = Result<Option<(Id, N)>>>
-                     + std::marker::Send
-                     + 'a),
-            >,
-        >,
-    >,
+    backlog: Vec<Pin<Backlog<'a, Id, N>>>,
 }
+
+pub type Backlog<'a, Id, N> =
+    Box<(dyn futures::future::Future<Output = Result<Option<(Id, N)>>> + std::marker::Send + 'a)>;
 
 impl<'a, Id, N, Backend> futures::stream::Stream for Stream<'a, Id, N, Backend>
 where
