@@ -2,14 +2,13 @@
 name        = "daglib"
 version     = "0.1.0"
 authors     = ["Matthias Beyer <mail@beyermatthias.de>"]
-edition     = "2018"
+edition     = "2021"
 description = "Generic async DAG library"
 
 [dependencies]
 async-trait = "0.1"
 futures = "0.3"
 thiserror = "1"
-tokio = { version = "1", features = ["full"] }
 
 [dev-dependencies]
 tokio-test = "0.4"
