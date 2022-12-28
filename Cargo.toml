@@ -2,7 +2,7 @@
 name        = "daglib"
 version     = "0.1.0"
 authors     = ["Matthias Beyer <mail@beyermatthias.de>"]
-edition     = "2018"
+edition     = "2021"
 description = "Generic async DAG library"
 
 [dependencies]
