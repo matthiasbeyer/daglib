@@ -5,6 +5,10 @@ authors     = ["Matthias Beyer <mail@beyermatthias.de>"]
 edition     = "2021"
 description = "Generic async DAG library"
 
+license = "MPL-2.0"
+repository = "https://github.com/matthiasbeyer/daglib"
+documentation = "https://docs.rs/daglib"
+
 [dependencies]
 async-trait = "0.1"
 futures = "0.3"
