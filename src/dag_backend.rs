@@ -4,7 +4,6 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
 
-use anyhow::Result;
 use async_trait::async_trait;
 
 use crate::Node;
@@ -20,6 +19,8 @@ where
     N: Node,
     Id: NodeId + Send,
 {
+    type Error;
+
     /// Get a `Node` from the backend that is identified by `id`
     ///
     /// # Returns
@@ -27,12 +28,12 @@ where
     /// * Should return Err(_) if the operation failed.
     /// * Should return Ok(None) if there is no node that is identified by `id`
     /// * Otherwise return the Id along with the node identified by it
-    async fn get(&self, id: Id) -> Result<Option<(Id, N)>>;
+    async fn get(&self, id: Id) -> Result<Option<(Id, N)>, Self::Error>;
 
     /// Store a `node` in the backend, returning its `Id`
     ///
     /// This function should store the `node` in the backend and return the `id` the node has.
-    async fn put(&mut self, node: N) -> Result<Id>;
+    async fn put(&mut self, node: N) -> Result<Id, Self::Error>;
 }
 
 #[cfg(test)]
