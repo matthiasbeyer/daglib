@@ -7,8 +7,19 @@
 use std::sync::Arc;
 use std::sync::RwLock;
 
-use anyhow::Result;
 use async_trait::async_trait;
+
+#[derive(Debug)]
+pub struct TestError;
+
+impl<Id> From<crate::Error<Id>> for TestError
+where
+    Id: crate::NodeId,
+{
+    fn from(_ce: crate::Error<Id>) -> Self {
+        TestError
+    }
+}
 
 #[derive(Copy, Clone, Eq, PartialEq, std::hash::Hash, Debug)]
 pub struct Id(pub(crate) usize);
@@ -46,7 +57,9 @@ impl Backend {
 
 #[async_trait]
 impl crate::DagBackend<Id, Node> for Backend {
-    async fn get(&self, id: Id) -> Result<Option<(Id, Node)>> {
+    type Error = TestError;
+
+    async fn get(&self, id: Id) -> Result<Option<(Id, Node)>, Self::Error> {
         if self.0.read().unwrap().len() < id.0 + 1 {
             Ok(None)
         } else {
@@ -54,7 +67,7 @@ impl crate::DagBackend<Id, Node> for Backend {
         }
     }
 
-    async fn put(&mut self, node: Node) -> Result<Id> {
+    async fn put(&mut self, node: Node) -> Result<Id, Self::Error> {
         while self.0.read().unwrap().len() < node.data + 1 {
             self.0.write().unwrap().push(None)
         }

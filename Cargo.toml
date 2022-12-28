@@ -6,12 +6,10 @@ edition     = "2018"
 description = "Generic async DAG library"
 
 [dependencies]
-# TODO: Replace with thiserror
-anyhow      = "1"
-
 async-trait = "0.1"
-futures     = "0.3"
-tokio       = { version = "1", features = ["full"] }
+futures = "0.3"
+thiserror = "1"
+tokio = { version = "1", features = ["full"] }
 
 [dev-dependencies]
 tokio-test = "0.4"

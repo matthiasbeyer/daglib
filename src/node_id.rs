@@ -7,4 +7,4 @@
 /// A unique identifier for a `Node`
 ///
 /// The `NodeId` should be cheap to clone (for example a UUID or some form of a hash value).
-pub trait NodeId: Clone + Eq + PartialEq {}
+pub trait NodeId: Clone + Eq + PartialEq + std::fmt::Debug {}
